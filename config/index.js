@@ -4,6 +4,7 @@ import express from "express";
 // ℹ️ Responsible for the messages you see in the terminal as requests are coming in
 // https://www.npmjs.com/package/morgan
 import logger from "morgan";
+import morgan from "morgan";
 
 // ℹ️ Needed when we deal with cookies (we will when dealing with authentication)
 // https://www.npmjs.com/package/cookie-parser
@@ -12,6 +13,20 @@ import cookieParser from "cookie-parser";
 // ℹ️ Needed to accept requests from 'the outside'. CORS stands for cross origin resource sharing
 // unless the request is made from the same domain, by default express wont accept POST requests
 import cors from "cors";
+
+import { connect } from "mongoose";
+import mongoose from "mongoose";
+
+const MONGO_URI = process.env.MONGODB_URI;
+
+connect(MONGO_URI)
+  .then((x) => {
+    const dbName = x.connections[0].name;
+    console.log(`Connected to Mongo! Database name: "${dbName}"`);
+  })
+  .catch((err) => {
+    console.error("Error connecting to mongo: ", err);
+  });
 
 const FRONTEND_URL = process.env.ORIGIN || "http://localhost:3000";
 
