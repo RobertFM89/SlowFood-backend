@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import mongoose from "mongoose";
 
 const recipeSchema = new Schema(
   {
@@ -16,7 +17,7 @@ const recipeSchema = new Schema(
     },
     cuisine: {
       type: String,
-      enum: ["vegetariana", "vegana", "carnívora"],
+      enum: ["vegetariana", "vegana", "carnivora"],
       required: [true, "Cuisine type is required."],
     },
     glutenFree: {
@@ -42,18 +43,21 @@ const recipeSchema = new Schema(
     },
     beveragePairing: {
       type: String,
-      enum: ["vino blanco", "vino rosado", "vino tinto", "cerveza", "Clipper", "té", "café", "licor", "cocktail"],
+      enum: ["vino blanco", "vino rosado", "vino tinto", "cerveza", "Clipper", "té", "cafe", "licor", "cocktail"],
       required: [true, "Beverage pairing is required."],
     },
     difficulty: {
       type: String,
-      enum: ["fácil", "media", "difícil", "masterchef"],
+      enum: ["facil", "media", "dificil", "masterchef"],
       required: [true, "Difficulty is required."],
     },
     author: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: [true, "Author is required."],
     },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    comments: [ {type: mongoose.Schema.Types.ObjectId, ref: "Comment"} ],
   },
   {
     timestamps: true,

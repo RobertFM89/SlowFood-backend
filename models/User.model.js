@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import mongoose from "mongoose";
 
 // TODO: Please make sure you edit the User model to whatever makes sense in this case
 const userSchema = new Schema(
@@ -16,8 +17,11 @@ const userSchema = new Schema(
     },
     name: {
       type: String,
-      required: [true, "Name is required."],
+      required: [true, "Username is required."],
     },
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    recipes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Recipe" }]
   },
   {
     // this second object adds extra properties: `createdAt` and `updatedAt`

@@ -1,12 +1,13 @@
 import { Router } from "express";
 const router = Router();
 import Recipe from "../models/Recipe.model.js";
+import { isAuthenticated } from "../middleware/jwt.middleware.js";
 
 // POST /recipes - Create a new recipe
 router.post("/recipes", (req, res, next) => {
-  const { image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty } = req.body;
+  const { image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty, author } = req.body;
 
-  Recipe.create({ image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty })
+  Recipe.create({ image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty, author })
     .then((createdRecipe) => res.status(201).json(createdRecipe))
     .catch((err) => next(err));
 });
@@ -26,6 +27,38 @@ router.get("/recipes/:id", (req, res, next) => {
     .then((recipe) => res.status(200).json(recipe))
     .catch((err) => next(err));
 });
+
+//POST /recipes/:id/comments - Add a comment to a recipe
+router.post('/recipes/:id/comments', isAuthenticated, (req, res, next) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  const author = req.payload._id;
+  
+  Comment.create({content, author, recipe: id})
+    .then((createdComment) => Recipe.findByIdAndUpdate(id, { $push: { comments: createdComment._id } }, { new: true }))
+    .then((updatedRecipe) => res.status(201).json(updatedRecipe))
+    .catch((err) => next(err));
+})
+
+//POST /recipes/:id/like - Like a recipe
+router.post('/recipes/:id/like', isAuthenticated, (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.payload._id;
+
+  Recipe.findByIdAndUpdate(id, { $addToSet: { likes: userId } }, { new: true })
+    .then((updatedRecipe) => res.status(200).json(updatedRecipe))
+    .catch((err) => next(err));
+})
+
+//POST /recipes/:id/unlike - Unlike a recipe
+router.post('/recipes/:id/unlike', isAuthenticated, (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.payload._id;
+  
+  Recipe.findByIdAndUpdate(id, {$pull: { likes: userId }}, {new: true})
+    .then((updatedRecipe) => res.status(200).json(updatedRecipe))
+    .catch((err) => next(err));
+})
 
 // GET /recipes/filter - Filter recipes by ingredients, cuisine, glutenFree, lactoseFree
 router.get("/recipes/filter", (req, res, next) => {
@@ -53,6 +86,7 @@ router.get("/recipes/author/:id", (req, res, next) => {
   const { id } = req.params;
 
   Recipe.find({ author: id })
+    .populate("author")
     .then((recipes) => res.status(200).json(recipes))
     .catch((err) => next(err));
 });
