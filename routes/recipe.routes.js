@@ -4,10 +4,38 @@ import Recipe from "../models/Recipe.model.js";
 import { isAuthenticated } from "../middleware/jwt.middleware.js";
 
 // POST /recipes - Create a new recipe
-router.post("/recipes", (req, res, next) => {
-  const { image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty, author } = req.body;
+router.post("/recipes", isAuthenticated, (req, res, next) => {
+  const { 
+    image, 
+    title, 
+    ingredients, 
+    cuisine, 
+    glutenFree, 
+    lactoseFree, 
+    instructions, 
+    time, 
+    flavor, 
+    beveragePairing, 
+    difficulty 
+  } = req.body;
+  
+  // Asignar automáticamente el autor como el usuario autenticado
+  const author = req.payload._id;
 
-  Recipe.create({ image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty, author })
+  Recipe.create({ 
+    image, 
+    title, 
+    ingredients, 
+    cuisine, 
+    glutenFree, 
+    lactoseFree, 
+    instructions, 
+    time, 
+    flavor, 
+    beveragePairing, 
+    difficulty, 
+    author 
+  })
     .then((createdRecipe) => res.status(201).json(createdRecipe))
     .catch((err) => next(err));
 });
@@ -24,6 +52,7 @@ router.get("/recipes/:id", (req, res, next) => {
   const { id } = req.params;
 
   Recipe.findById(id)
+    .populate("author", "name") // Populamos el campo author para obtener su nombre
     .then((recipe) => res.status(200).json(recipe))
     .catch((err) => next(err));
 });
@@ -115,7 +144,7 @@ router.put("/recipes/:id", (req, res, next) => {
 router.delete("/recipes/:id", (req, res, next) => {
   const { id } = req.params;
 
-  Recipe.findByIdAndRemove(id)
+  Recipe.findByIdAndDelete(id)
     .then(() => res.status(204).send())
     .catch((err) => next(err));
 });
