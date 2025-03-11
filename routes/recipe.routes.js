@@ -115,7 +115,7 @@ router.get("/recipes/author/:id", (req, res, next) => {
   const { id } = req.params;
 
   Recipe.find({ author: id })
-    .populate("author")
+    .populate("author", "name email") // Aseguramos que el autor se popule correctamente
     .then((recipes) => res.status(200).json(recipes))
     .catch((err) => next(err));
 });
