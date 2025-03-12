@@ -15,10 +15,13 @@ const recipeSchema = new Schema(
       type: [String],
       required: [true, "Ingredients are required."],
     },
-    cuisine: {
-      type: String,
-      enum: ["vegetariana", "vegana", "carnivora"],
-      required: [true, "Cuisine type is required."],
+    vegetarian: {
+      type: Boolean,
+      default: false,
+    },
+    vegan: {
+      type: Boolean,
+      default: false,
     },
     glutenFree: {
       type: Boolean,

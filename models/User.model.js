@@ -19,6 +19,14 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Username is required."],
     },
+    profileImage: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     recipes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Recipe" }]

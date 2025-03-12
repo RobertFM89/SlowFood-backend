@@ -1,9 +1,7 @@
-// ℹ️ Gets access to environment variables/settings
-// https://www.npmjs.com/package/dotenv
+
 import dotenv from "dotenv";
 dotenv.config();
 
-// ℹ️ Connects to the database
 import connect from "./db/index.js";
 
 // Handles http requests (express is node js framework)
@@ -31,6 +29,9 @@ app.use("/api", userRoutes);
 
 import commentRoutes from "./routes/comment.routes.js";
 app.use("/api", commentRoutes);
+
+import uploadRoutes from "./routes/upload.routes.js";
+app.use("/api", uploadRoutes);
 
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 import errorHandling from "./error-handling/index.js";

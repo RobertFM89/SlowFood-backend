@@ -9,7 +9,8 @@ router.post("/recipes", isAuthenticated, (req, res, next) => {
     image, 
     title, 
     ingredients, 
-    cuisine, 
+    vegetarian,
+    vegan, 
     glutenFree, 
     lactoseFree, 
     instructions, 
@@ -26,7 +27,8 @@ router.post("/recipes", isAuthenticated, (req, res, next) => {
     image, 
     title, 
     ingredients, 
-    cuisine, 
+    vegetarian,
+    vegan, 
     glutenFree, 
     lactoseFree, 
     instructions, 
@@ -91,12 +93,13 @@ router.post('/recipes/:id/unlike', isAuthenticated, (req, res, next) => {
 
 // GET /recipes/filter - Filter recipes by ingredients, cuisine, glutenFree, lactoseFree
 router.get("/recipes/filter", (req, res, next) => {
-  const { ingredients, cuisine, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
+  const { ingredients, vegatarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
   const filter = {};
 
   if (title) filter.title = title;
   if (ingredients) filter.ingredients = { $all: ingredients.split(",") };
-  if (cuisine) filter.cuisine = cuisine;
+  if (vegetarian) filter.vegetarian === "true";
+  if (vegan) filter.vegan === "true";
   if (glutenFree) filter.glutenFree = glutenFree === "true";
   if (lactoseFree) filter.lactoseFree = lactoseFree === "true";
   if (time) filter.time = time;
@@ -133,9 +136,9 @@ router.get("/recipes/random", (req, res, next) => {
 // PUT /recipes/:id - Update recipe by id
 router.put("/recipes/:id", (req, res, next) => {
   const { id } = req.params;
-  const { image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty } = req.body;
+  const { image, title, ingredients, vegetarian, vegan, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty } = req.body;
 
-  Recipe.findByIdAndUpdate(id, { image, title, ingredients, cuisine, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty }, { new: true })
+  Recipe.findByIdAndUpdate(id, { image, title, ingredients, vegetarian, vegan, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty }, { new: true })
     .then((updatedRecipe) => res.status(200).json(updatedRecipe))
     .catch((err) => next(err));
 });
