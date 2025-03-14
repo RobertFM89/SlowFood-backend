@@ -56,6 +56,13 @@ router.get("/recipes", preventCache, (req, res, next) => {
   // Obtenemos los parámetros de paginación de la consulta, con valores predeterminados
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 9;
+
+  // Filtros
+  const filter = {};
+  if (req.query.vegetarian === 'true') filter.vegetarian = true;
+  if (req.query.vegan === 'true') filter.vegan = true;
+  if (req.query.glutenFree === 'true') filter.glutenFree = true;
+  if (req.query.lactoseFree === 'true') filter.lactoseFree = true;
   
   // Calculamos el número de documentos a saltar
   const skip = (page - 1) * limit;
@@ -66,6 +73,7 @@ router.get("/recipes", preventCache, (req, res, next) => {
     Recipe.find()
       .skip(skip)
       .limit(limit)
+      .sort({ createdAt: -1 })
       .populate("author", "name")
   ])
     .then(([total, recipes]) => {
@@ -185,10 +193,10 @@ router.get("/recipes/filter", preventCache, (req, res, next) => {
   const { ingredients, vegetarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
   const filter = {};
 
-  if (title) filter.title = title;
+  if (title) filter.title = { $regex: title, $options: 'i' };
   if (ingredients) filter.ingredients = { $all: ingredients.split(",") };
-  if (vegetarian) filter.vegetarian === "true";
-  if (vegan) filter.vegan === "true";
+  if (vegetarian) filter.vegetarian = vegetarian === "true";
+  if (vegan) filter.vegan = vegan === "true";
   if (glutenFree) filter.glutenFree = glutenFree === "true";
   if (lactoseFree) filter.lactoseFree = lactoseFree === "true";
   if (time) filter.time = time;
@@ -198,7 +206,23 @@ router.get("/recipes/filter", preventCache, (req, res, next) => {
   if (author) filter.author = author;
 
   Recipe.find(filter)
-    .then((recipes) => res.status(200).json(recipes))
+  .then((recipes) => {
+    // Agregar paginación si es necesario
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 9;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    
+    const paginatedRecipes = recipes.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(recipes.length / limit);
+    
+    res.status(200).json({
+      recipes: paginatedRecipes,
+      totalPages,
+      currentPage: page,
+      totalRecipes: recipes.length
+    });
+  })
     .catch((err) => next(err));
 });
 
