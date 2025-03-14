@@ -14,7 +14,20 @@ const app = express();
 import configureMiddleware from "./config/index.js";
 configureMiddleware(app);
 
+app.use((req, res, next) => {
+    // No aplicar caché a rutas de la API
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
+
 // 👇 Start handling routes here
+
+
+
 import indexRoutes from "./routes/index.routes.js";
 app.use("/api", indexRoutes);
 

@@ -2,6 +2,15 @@ import { Router } from "express";
 const router = Router();
 import Recipe from "../models/Recipe.model.js";
 import { isAuthenticated } from "../middleware/jwt.middleware.js";
+import Comment from "../models/Comment.model.js";
+
+// Middleware para prevenir el almacenamiento en caché
+const preventCache = (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+};
 
 // POST /recipes - Create a new recipe
 router.post("/recipes", isAuthenticated, (req, res, next) => {
@@ -43,14 +52,94 @@ router.post("/recipes", isAuthenticated, (req, res, next) => {
 });
 
 // GET /recipes - List all recipes
-router.get("/recipes", (req, res, next) => {
+router.get("/recipes", preventCache, (req, res, next) => {
+  // Obtenemos los parámetros de paginación de la consulta, con valores predeterminados
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 9;
+  
+  // Calculamos el número de documentos a saltar
+  const skip = (page - 1) * limit;
+  
+  // Primero contamos el total de recetas para calcular el número total de páginas
+  Promise.all([
+    Recipe.countDocuments(),
+    Recipe.find()
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name")
+  ])
+    .then(([total, recipes]) => {
+      const totalPages = Math.ceil(total / limit);
+      
+      res.status(200).json({
+        recipes,
+        totalPages,
+        currentPage: page,
+        totalRecipes: total
+      });
+    })
+    .catch((err) => next(err));
+});
+
+// GET /recipes/my-recipes - Get recipes from the logged user
+router.get("/recipes/my-recipes", isAuthenticated, preventCache, (req, res, next) => {
+  const userId = req.payload._id;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 9;
+  
+  // Calculamos el número de documentos a saltar
+  const skip = (page - 1) * limit;
+  
+  Promise.all([
+    Recipe.countDocuments({ author: userId }),
+    Recipe.find({ author: userId })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .populate("author", "name")
+  ])
+    .then(([total, recipes]) => {
+      const totalPages = Math.ceil(total / limit);
+      
+      res.status(200).json({
+        recipes,
+        totalPages,
+        currentPage: page,
+        totalRecipes: total
+      });
+    })
+    .catch((err) => next(err));
+});
+
+
+// GET /recipes/random - Get a random recipe
+router.get("/recipes/random", preventCache, (req, res, next) => {
   Recipe.find()
+    .populate("author", "name")  // Añadir populate para obtener el nombre del autor
+    .then((recipes) => {
+      if (recipes.length === 0) {
+        return res.status(404).json({ message: "No hay recetas disponibles" });
+      }
+      
+      const randomIndex = Math.floor(Math.random() * recipes.length);
+      res.status(200).json(recipes[randomIndex]);
+    })
+    .catch((err) => next(err));
+});
+
+// GET /recipes/author/:id - Filter recipes by author
+router.get("/recipes/author/:id", preventCache, (req, res, next) => {
+  const { id } = req.params;
+
+  Recipe.find({ author: id })
+    .populate("author", "name email") // Aseguramos que el autor se popule correctamente
     .then((recipes) => res.status(200).json(recipes))
     .catch((err) => next(err));
 });
 
+// IMPORTANTE: La ruta con parámetro dinámico debe ir después de las rutas específicas
 // GET /recipes/:id - Get recipe by id
-router.get("/recipes/:id", (req, res, next) => {
+router.get("/recipes/:id", preventCache, (req, res, next) => {
   const { id } = req.params;
 
   Recipe.findById(id)
@@ -69,7 +158,7 @@ router.post('/recipes/:id/comments', isAuthenticated, (req, res, next) => {
     .then((createdComment) => Recipe.findByIdAndUpdate(id, { $push: { comments: createdComment._id } }, { new: true }))
     .then((updatedRecipe) => res.status(201).json(updatedRecipe))
     .catch((err) => next(err));
-})
+});
 
 //POST /recipes/:id/like - Like a recipe
 router.post('/recipes/:id/like', isAuthenticated, (req, res, next) => {
@@ -79,7 +168,7 @@ router.post('/recipes/:id/like', isAuthenticated, (req, res, next) => {
   Recipe.findByIdAndUpdate(id, { $addToSet: { likes: userId } }, { new: true })
     .then((updatedRecipe) => res.status(200).json(updatedRecipe))
     .catch((err) => next(err));
-})
+});
 
 //POST /recipes/:id/unlike - Unlike a recipe
 router.post('/recipes/:id/unlike', isAuthenticated, (req, res, next) => {
@@ -89,11 +178,11 @@ router.post('/recipes/:id/unlike', isAuthenticated, (req, res, next) => {
   Recipe.findByIdAndUpdate(id, {$pull: { likes: userId }}, {new: true})
     .then((updatedRecipe) => res.status(200).json(updatedRecipe))
     .catch((err) => next(err));
-})
+});
 
 // GET /recipes/filter - Filter recipes by ingredients, cuisine, glutenFree, lactoseFree
-router.get("/recipes/filter", (req, res, next) => {
-  const { ingredients, vegatarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
+router.get("/recipes/filter", preventCache, (req, res, next) => {
+  const { ingredients, vegetarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
   const filter = {};
 
   if (title) filter.title = title;
@@ -113,41 +202,44 @@ router.get("/recipes/filter", (req, res, next) => {
     .catch((err) => next(err));
 });
 
-// GET /recipes/author/:id - Filter recipes by author
-router.get("/recipes/author/:id", (req, res, next) => {
-  const { id } = req.params;
-
-  Recipe.find({ author: id })
-    .populate("author", "name email") // Aseguramos que el autor se popule correctamente
-    .then((recipes) => res.status(200).json(recipes))
-    .catch((err) => next(err));
-});
-
-// GET /recipes/random - Get a random recipe
-router.get("/recipes/random", (req, res, next) => {
-  Recipe.find()
-    .then((recipes) => {
-      const randomIndex = Math.floor(Math.random() * recipes.length);
-      res.status(200).json(recipes[randomIndex]);
-    })
-    .catch((err) => next(err));
-});
-
 // PUT /recipes/:id - Update recipe by id
-router.put("/recipes/:id", (req, res, next) => {
+router.put("/recipes/:id", isAuthenticated, (req, res, next) => {
   const { id } = req.params;
   const { image, title, ingredients, vegetarian, vegan, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty } = req.body;
-
-  Recipe.findByIdAndUpdate(id, { image, title, ingredients, vegetarian, vegan, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty }, { new: true })
+  
+  // Verificar que el usuario es el autor de la receta
+  Recipe.findById(id)
+    .then(recipe => {
+      if (recipe.author.toString() !== req.payload._id) {
+        return res.status(403).json({ message: "No tienes permiso para editar esta receta" });
+      }
+      
+      return Recipe.findByIdAndUpdate(id, 
+        { image, title, ingredients, vegetarian, vegan, glutenFree, lactoseFree, instructions, time, flavor, beveragePairing, difficulty }, 
+        { new: true }
+      );
+    })
     .then((updatedRecipe) => res.status(200).json(updatedRecipe))
     .catch((err) => next(err));
 });
 
 // DELETE /recipes/:id - Delete recipe by id
-router.delete("/recipes/:id", (req, res, next) => {
+router.delete("/recipes/:id", isAuthenticated, (req, res, next) => {
   const { id } = req.params;
 
-  Recipe.findByIdAndDelete(id)
+  // Verificar que el usuario es el autor de la receta
+  Recipe.findById(id)
+    .then(recipe => {
+      if (!recipe) {
+        return res.status(404).json({ message: "Receta no encontrada" });
+      }
+      
+      if (recipe.author.toString() !== req.payload._id) {
+        return res.status(403).json({ message: "No tienes permiso para eliminar esta receta" });
+      }
+      
+      return Recipe.findByIdAndDelete(id);
+    })
     .then(() => res.status(204).send())
     .catch((err) => next(err));
 });
