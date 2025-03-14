@@ -89,6 +89,46 @@ router.get("/recipes", preventCache, (req, res, next) => {
     .catch((err) => next(err));
 });
 
+router.get("/recipes/filter", preventCache, (req, res, next) => {
+  const { ingredients, vegetarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author, page = 1, limit = 9 } = req.query;
+  const filter = {};
+
+  if (title) filter.title = { $regex: title, $options: 'i' };
+  if (ingredients) filter.ingredients = { $all: ingredients.split(",") };
+  if (vegetarian) filter.vegetarian = vegetarian === "true";
+  if (vegan) filter.vegan = vegan === "true";
+  if (glutenFree) filter.glutenFree = glutenFree === "true";
+  if (lactoseFree) filter.lactoseFree = lactoseFree === "true";
+  if (time) filter.time = parseInt(time);
+  if (flavor) filter.flavor = flavor;
+  if (beveragePairing) filter.beveragePairing = beveragePairing;
+  if (difficulty) filter.difficulty = difficulty;
+  if (author) filter.author = author;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  
+  // Usa Promise.all para obtener tanto las recetas como el conteo total
+  Promise.all([
+    Recipe.find(filter)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 })
+      .populate("author", "name"),
+    Recipe.countDocuments(filter)
+  ])
+    .then(([recipes, total]) => {
+      const totalPages = Math.ceil(total / parseInt(limit));
+      
+      res.status(200).json({
+        recipes,
+        totalPages,
+        currentPage: parseInt(page),
+        totalRecipes: total
+      });
+    })
+    .catch((err) => next(err));
+});
+
 // GET /recipes/my-recipes - Get recipes from the logged user
 router.get("/recipes/my-recipes", isAuthenticated, preventCache, (req, res, next) => {
   const userId = req.payload._id;
@@ -188,43 +228,7 @@ router.post('/recipes/:id/unlike', isAuthenticated, (req, res, next) => {
     .catch((err) => next(err));
 });
 
-// GET /recipes/filter - Filter recipes by ingredients, cuisine, glutenFree, lactoseFree
-router.get("/recipes/filter", preventCache, (req, res, next) => {
-  const { ingredients, vegetarian, vegan, glutenFree, lactoseFree, time, flavor, beveragePairing, difficulty, title, author } = req.query;
-  const filter = {};
 
-  if (title) filter.title = { $regex: title, $options: 'i' };
-  if (ingredients) filter.ingredients = { $all: ingredients.split(",") };
-  if (vegetarian) filter.vegetarian = vegetarian === "true";
-  if (vegan) filter.vegan = vegan === "true";
-  if (glutenFree) filter.glutenFree = glutenFree === "true";
-  if (lactoseFree) filter.lactoseFree = lactoseFree === "true";
-  if (time) filter.time = time;
-  if (flavor) filter.flavor = flavor;
-  if (beveragePairing) filter.beveragePairing = beveragePairing;
-  if (difficulty) filter.difficulty = difficulty;
-  if (author) filter.author = author;
-
-  Recipe.find(filter)
-  .then((recipes) => {
-    // Agregar paginación si es necesario
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 9;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    
-    const paginatedRecipes = recipes.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(recipes.length / limit);
-    
-    res.status(200).json({
-      recipes: paginatedRecipes,
-      totalPages,
-      currentPage: page,
-      totalRecipes: recipes.length
-    });
-  })
-    .catch((err) => next(err));
-});
 
 // PUT /recipes/:id - Update recipe by id
 router.put("/recipes/:id", isAuthenticated, (req, res, next) => {
