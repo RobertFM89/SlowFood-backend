@@ -8,6 +8,8 @@ import connect from "./db/index.js";
 // https://www.npmjs.com/package/express
 import express from "express";
 
+
+
 const app = express();
 
 // ℹ️ This function is getting exported from the config folder. It runs most pieces of middleware
@@ -45,6 +47,11 @@ app.use("/api", commentRoutes);
 
 import uploadRoutes from "./routes/upload.routes.js";
 app.use("/api", uploadRoutes);
+
+// Añadir las rutas de IA
+import aiRoutes from "./routes/ai.routes.js";
+app.use("/api/ai", aiRoutes);
+
 
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 import errorHandling from "./error-handling/index.js";
